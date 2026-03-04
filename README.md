@@ -1,8 +1,8 @@
 # Lindab Backend
 
-Express mock API za Lindab delivery app. PostgreSQL baza, rute usklađene s app `services/api.ts`.
+Express mock API for the Lindab delivery app. PostgreSQL database, routes aligned with app `services/api.ts`.
 
-## Instalacija
+## Installation
 
 ```bash
 cd lindab-backend
@@ -10,44 +10,44 @@ npm install
 cp .env.example .env
 ```
 
-U `.env` postavi `DATABASE_URL` (npr. `postgresql://user:password@localhost:5432/lindab`) ili varijable `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` (i po želji `PGPORT`).
+In `.env` set `DATABASE_URL` (e.g. `postgresql://user:password@localhost:5432/lindab`) or the variables `PGHOST`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` (and optionally `PGPORT`).
 
-## Kreiranje baze u PostgreSQLu (lokalna instalacija)
+## Creating the database (local PostgreSQL)
 
-Bazu `lindab` trebaš kreirati u svom PostgreSQLu prije prvog pokretanja.
+Create the `lindab` database in your PostgreSQL instance before first run.
 
-**Način 1 – naredba `createdb` (ako imaš u PATH-u):**
+**Option 1 – `createdb` (if in PATH):**
 ```bash
 createdb -U postgres lindab
 ```
-(Koristi svog PostgreSQL korisnika umjesto `postgres` ako je drugačije.)
+(Use your PostgreSQL user instead of `postgres` if different.)
 
-**Način 2 – preko `psql`:**
+**Option 2 – via `psql`:**
 ```bash
 psql -U postgres -c "CREATE DATABASE lindab;"
 ```
 
-**Na macOS-u (Homebrew):** ako koristiš `brew services start postgresql`, obično se spajaš kao trenutni OS korisnik:
+**On macOS (Homebrew):** if you use `brew services start postgresql`, you usually connect as the current OS user:
 ```bash
 createdb lindab
-# ili
+# or
 psql -c "CREATE DATABASE lindab;"
 ```
 
-U `.env` onda stavi korisnika i lozinku koji imaju pristup toj bazi, npr.:
+Then in `.env` set the user and password that can access that database, e.g.:
 ```env
-DATABASE_URL=postgresql://tvoj_user:tvoja_lozinka@localhost:5432/lindab
+DATABASE_URL=postgresql://your_user:your_password@localhost:5432/lindab
 ```
 
-## Migracije i seed
+## Migrations and seed
 
-Pri prvom pokretanju servera pokreću se migracije (tablice se kreiraju ako ne postoje). Seed podatke (kamioni, rute, stanice) učitaj ručno:
+On first start the server runs migrations (tables are created if missing). Load seed data (trucks, routes, stops) manually:
 
 ```bash
 npm run seed
 ```
 
-## Pokretanje
+## Running
 
 ```bash
 # development (ts-node-dev)
@@ -57,30 +57,28 @@ npm run dev
 npm run build && npm start
 ```
 
-Server sluša na `http://localhost:3000` (ili `PORT` iz `.env`).
+Server listens on `http://localhost:3000` (or `PORT` from `.env`).
 
-## Rute
+## Routes
 
-| Metoda | Ruta | Opis |
-|--------|------|------|
-| GET | `/api/day?date=YYYY-MM-DD` | Dan podaci: trucks, routes, stops |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/day?date=YYYY-MM-DD` | Day data: trucks, routes, stops |
 | POST | `/api/stops/events` | Body: `{ events: [{ stopId, eventType, payload, createdAt }] }` |
 | POST | `/api/stops/delivery-updates` | Body: `{ events: [{ stopId, payload, createdAt }] }` |
-| POST | `/api/stops/:stopId/events/locations/batch` | Body: `{ points: [{ user_id, latitude, longitude, recorded_at }] }` — `recorded_at` je ISO 8601 datetime string (npr. `"2025-03-03T14:30:00.000Z"`) |
-| POST | `/api/sync/pull` | Body: `{ lastPulledAt?: number }` — delta sync |
-| POST | `/api/sync/push` | Body: `{ changes: Record<string, unknown> }` — push client changes |
+| POST | `/api/stops/:stopId/events/locations/batch` | Body: `{ points: [{ user_id, latitude, longitude, recorded_at }] }` — `recorded_at` is ISO 8601 datetime string (e.g. `"2025-03-03T14:30:00.000Z"`) |
 | GET | `/health` | Health check |
 
-Autorizacija: opcionalno `Authorization: Bearer <userId>`.
+Auth: optional `Authorization: Bearer <userId>`.
 
-## Povezivanje s appom
+## Connecting the app
 
-U rootu **lindab** projekta u `.env` dodaj:
+In the **lindab** project root add to `.env`:
 
 ```env
 EXPO_PUBLIC_API_URL=http://localhost:3000
 ```
 
-Za Android emulator koristi `http://10.0.2.2:3000`. Za fizički uređaj na istoj mreži npr. `http://192.168.1.x:3000`.
+For Android emulator use `http://10.0.2.2:3000`. For a physical device on the same network use e.g. `http://192.168.1.x:3000`.
 
-Aplikacija koristi `EXPO_PUBLIC_API_URL` u `services/api.ts` za sve pozive; ako nije postavljen, ostaje mock (lokalni podaci bez servera).
+The app uses `EXPO_PUBLIC_API_URL` in `services/api.ts` for all requests; if unset, it falls back to mock (local data, no server).
