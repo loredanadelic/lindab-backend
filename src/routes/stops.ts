@@ -24,6 +24,15 @@ router.post("/events", async (req, res) => {
         "INSERT INTO stop_lifecycle_events (stop_id, event_type, payload, created_at) VALUES ($1, $2, $3, $4::timestamptz)",
         [e.stopId, e.eventType, e.payload, created_at],
       );
+      await client.query(
+        `INSERT INTO stop_lifecycle_state (stop_id, event_type, payload, updated_at)
+         VALUES ($1, $2, $3, $4::timestamptz)
+         ON CONFLICT (stop_id) DO UPDATE SET
+           event_type = EXCLUDED.event_type,
+           payload = EXCLUDED.payload,
+           updated_at = EXCLUDED.updated_at`,
+        [e.stopId, e.eventType, e.payload, created_at],
+      );
     }
   });
   res.status(204).send();
@@ -45,6 +54,42 @@ router.post("/delivery-updates", async (req, res) => {
       await client.query(
         "INSERT INTO stop_delivery_updates (stop_id, payload, created_at) VALUES ($1, $2, $3::timestamptz)",
         [e.stopId, e.payload, created_at],
+      );
+      let signature: string | null = null;
+      let images: string | null = null;
+      let description: string | null = null;
+      if (e.payload) {
+        try {
+          const parsed = JSON.parse(e.payload) as {
+            signature?: string | null;
+            images?: string | string[] | null;
+            description?: string | null;
+          };
+          signature =
+            typeof parsed.signature === "string" ? parsed.signature : null;
+          description =
+            typeof parsed.description === "string"
+              ? parsed.description
+              : null;
+          images =
+            typeof parsed.images === "string"
+              ? parsed.images
+              : Array.isArray(parsed.images)
+                ? JSON.stringify(parsed.images)
+                : null;
+        } catch {
+          // keep nulls if payload is not valid JSON
+        }
+      }
+      await client.query(
+        `INSERT INTO stop_delivery_info (stop_id, signature, images, description, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5::timestamptz, $5::timestamptz)
+         ON CONFLICT (stop_id) DO UPDATE SET
+           signature = EXCLUDED.signature,
+           images = EXCLUDED.images,
+           description = EXCLUDED.description,
+           updated_at = EXCLUDED.updated_at`,
+        [e.stopId, signature, images, description, created_at],
       );
     }
   });

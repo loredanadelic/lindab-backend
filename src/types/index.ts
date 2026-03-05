@@ -20,10 +20,28 @@ export type DayStop = {
   estimated_time: string | null
 }
 
+export type DayDeliveryInfo = {
+  stop_id: string
+  signature: string | null
+  images: string | null
+  description: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type DayLifecycleState = {
+  stop_id: string
+  event_type: string
+  payload: string | null
+  updated_at: string
+}
+
 export type DayData = {
   trucks: DayTruck[]
   routes: DayRoute[]
   stops: DayStop[]
+  delivery_info: DayDeliveryInfo[]
+  lifecycle_state: DayLifecycleState[]
 }
 
 export type StopLifecycleEventPayload = {

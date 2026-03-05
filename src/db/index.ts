@@ -70,6 +70,20 @@ const migrationStatements = [
     recorded_at TIMESTAMPTZ NOT NULL,
     received_at BIGINT DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
   )`,
+  `CREATE TABLE IF NOT EXISTS stop_delivery_info (
+    stop_id TEXT PRIMARY KEY,
+    signature TEXT,
+    images TEXT,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE TABLE IF NOT EXISTS stop_lifecycle_state (
+    stop_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    payload TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ]
 
 export async function runMigrations(): Promise<void> {
