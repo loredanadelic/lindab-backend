@@ -30,13 +30,15 @@ export type StopLifecycleEventPayload = {
   stopId: string
   eventType: string
   payload: string | null
-  createdAt: number
+  /** ISO 8601 datetime string (e.g. "2025-03-04T14:30:00.000Z") */
+  createdAt: string
 }
 
 export type StopDeliveryUpdatePayload = {
   stopId: string
   payload: string | null
-  createdAt: number
+  /** ISO 8601 datetime string (e.g. "2025-03-04T14:30:00.000Z") */
+  createdAt: string
 }
 
 export type GpsPointPayload = {

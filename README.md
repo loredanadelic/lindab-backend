@@ -76,9 +76,9 @@ Auth: optional `Authorization: Bearer <userId>`.
 In the **lindab** project root add to `.env`:
 
 ```env
-EXPO_PUBLIC_API_URL=http://localhost:3000
+API_URL=http://localhost:3000
 ```
 
 For Android emulator use `http://10.0.2.2:3000`. For a physical device on the same network use e.g. `http://192.168.1.x:3000`.
 
-The app uses `EXPO_PUBLIC_API_URL` in `services/api.ts` for all requests; if unset, it falls back to mock (local data, no server).
+The app uses `API_URL` in `services/api.ts` for all requests; if unset, it falls back to mock (local data, no server).

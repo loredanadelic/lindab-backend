@@ -51,14 +51,14 @@ const migrationStatements = [
     stop_id TEXT NOT NULL,
     event_type TEXT NOT NULL,
     payload TEXT,
-    created_at BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
     received_at BIGINT DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
   )`,
   `CREATE TABLE IF NOT EXISTS stop_delivery_updates (
     id SERIAL PRIMARY KEY,
     stop_id TEXT NOT NULL,
     payload TEXT,
-    created_at BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
     received_at BIGINT DEFAULT (EXTRACT(EPOCH FROM now()) * 1000)::BIGINT
   )`,
   `CREATE TABLE IF NOT EXISTS gps_points (
@@ -85,6 +85,24 @@ export async function runMigrations(): Promise<void> {
     if (col.rows[0]?.data_type === 'bigint') {
       await client.query(
         `ALTER TABLE gps_points ALTER COLUMN recorded_at TYPE TIMESTAMPTZ USING to_timestamp(recorded_at / 1000.0) AT TIME ZONE 'UTC'`
+      )
+    }
+    // Migrate stop_lifecycle_events.created_at from BIGINT (ms) to TIMESTAMPTZ if needed
+    const lifecycleCol = await client.query(
+      `SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'stop_lifecycle_events' AND column_name = 'created_at'`
+    )
+    if (lifecycleCol.rows[0]?.data_type === 'bigint') {
+      await client.query(
+        `ALTER TABLE stop_lifecycle_events ALTER COLUMN created_at TYPE TIMESTAMPTZ USING to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC'`
+      )
+    }
+    // Migrate stop_delivery_updates.created_at from BIGINT (ms) to TIMESTAMPTZ if needed
+    const deliveryCol = await client.query(
+      `SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'stop_delivery_updates' AND column_name = 'created_at'`
+    )
+    if (deliveryCol.rows[0]?.data_type === 'bigint') {
+      await client.query(
+        `ALTER TABLE stop_delivery_updates ALTER COLUMN created_at TYPE TIMESTAMPTZ USING to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC'`
       )
     }
   } finally {
