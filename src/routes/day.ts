@@ -4,7 +4,7 @@ import type { DayData } from "../types";
 
 const router = Router();
 
-/** GET /api/day?date=YYYY-MM-DD — trucks, routes, stops, delivery_info, lifecycle_state for the day */
+/** GET /api/day?date=YYYY-MM-DD — trucks, routes, stops, delivery_info, arrival_departure for the day */
 router.get("/day", async (_req, res) => {
   const date =
     (_req.query.date as string) || new Date().toISOString().slice(0, 10);
@@ -17,10 +17,10 @@ router.get("/day", async (_req, res) => {
     "SELECT id, name, latitude, longitude, address, contact, route_id, delivery_notes, estimated_time FROM stops",
   );
   const deliveryInfoResult = await pool.query(
-    "SELECT stop_id, signature, images, description, created_at, updated_at FROM stop_delivery_info",
+    "SELECT stop_id, name, signature, images, description, deviation, created_at, updated_at FROM stop_delivery_info",
   );
-  const lifecycleStateResult = await pool.query(
-    "SELECT stop_id, event_type, payload, updated_at FROM stop_lifecycle_state",
+  const arrivalDepartureResult = await pool.query(
+    "SELECT stop_id, arrival_time, departure_time FROM stop_arrival_departure",
   );
 
   const dayData: DayData = {
@@ -29,9 +29,11 @@ router.get("/day", async (_req, res) => {
     stops: stopsResult.rows as DayData["stops"],
     delivery_info: deliveryInfoResult.rows.map((row) => ({
       stop_id: row.stop_id,
+      name: row.name ?? null,
       signature: row.signature,
       images: row.images,
       description: row.description,
+      deviation: row.deviation ?? null,
       created_at:
         row.created_at instanceof Date
           ? row.created_at.toISOString()
@@ -41,14 +43,20 @@ router.get("/day", async (_req, res) => {
           ? row.updated_at.toISOString()
           : String(row.updated_at),
     })),
-    lifecycle_state: lifecycleStateResult.rows.map((row) => ({
+    arrival_departure: arrivalDepartureResult.rows.map((row) => ({
       stop_id: row.stop_id,
-      event_type: row.event_type,
-      payload: row.payload,
-      updated_at:
-        row.updated_at instanceof Date
-          ? row.updated_at.toISOString()
-          : String(row.updated_at),
+      arrival_time:
+        row.arrival_time instanceof Date
+          ? row.arrival_time.toISOString()
+          : row.arrival_time != null
+            ? String(row.arrival_time)
+            : null,
+      departure_time:
+        row.departure_time instanceof Date
+          ? row.departure_time.toISOString()
+          : row.departure_time != null
+            ? String(row.departure_time)
+            : null,
     })),
   };
   res.json(dayData);

@@ -24,15 +24,21 @@ router.post("/events", async (req, res) => {
         "INSERT INTO stop_lifecycle_events (stop_id, event_type, payload, created_at) VALUES ($1, $2, $3, $4::timestamptz)",
         [e.stopId, e.eventType, e.payload, created_at],
       );
-      await client.query(
-        `INSERT INTO stop_lifecycle_state (stop_id, event_type, payload, updated_at)
-         VALUES ($1, $2, $3, $4::timestamptz)
-         ON CONFLICT (stop_id) DO UPDATE SET
-           event_type = EXCLUDED.event_type,
-           payload = EXCLUDED.payload,
-           updated_at = EXCLUDED.updated_at`,
-        [e.stopId, e.eventType, e.payload, created_at],
-      );
+      if (e.eventType === "arrived") {
+        await client.query(
+          `INSERT INTO stop_arrival_departure (stop_id, arrival_time)
+           VALUES ($1, $2::timestamptz)
+           ON CONFLICT (stop_id) DO UPDATE SET arrival_time = EXCLUDED.arrival_time`,
+          [e.stopId, created_at],
+        );
+      } else if (e.eventType === "departed") {
+        await client.query(
+          `INSERT INTO stop_arrival_departure (stop_id, departure_time)
+           VALUES ($1, $2::timestamptz)
+           ON CONFLICT (stop_id) DO UPDATE SET departure_time = EXCLUDED.departure_time`,
+          [e.stopId, created_at],
+        );
+      }
     }
   });
   res.status(204).send();
@@ -58,19 +64,27 @@ router.post("/delivery-updates", async (req, res) => {
       let signature: string | null = null;
       let images: string | null = null;
       let description: string | null = null;
+      let name: string | null = null;
+      let deviation: string | null = null;
       if (e.payload) {
         try {
           const parsed = JSON.parse(e.payload) as {
+            name?: string | null;
             signature?: string | null;
             images?: string | string[] | null;
             description?: string | null;
+            deviation?: string | null;
           };
+          name =
+            typeof parsed.name === "string" ? parsed.name : null;
           signature =
             typeof parsed.signature === "string" ? parsed.signature : null;
           description =
             typeof parsed.description === "string"
               ? parsed.description
               : null;
+          deviation =
+            typeof parsed.deviation === "string" ? parsed.deviation : null;
           images =
             typeof parsed.images === "string"
               ? parsed.images
@@ -82,14 +96,16 @@ router.post("/delivery-updates", async (req, res) => {
         }
       }
       await client.query(
-        `INSERT INTO stop_delivery_info (stop_id, signature, images, description, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5::timestamptz, $5::timestamptz)
+        `INSERT INTO stop_delivery_info (stop_id, name, signature, images, description, deviation, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $7::timestamptz)
          ON CONFLICT (stop_id) DO UPDATE SET
+           name = EXCLUDED.name,
            signature = EXCLUDED.signature,
            images = EXCLUDED.images,
            description = EXCLUDED.description,
+           deviation = EXCLUDED.deviation,
            updated_at = EXCLUDED.updated_at`,
-        [e.stopId, signature, images, description, created_at],
+        [e.stopId, name, signature, images, description, deviation, created_at],
       );
     }
   });

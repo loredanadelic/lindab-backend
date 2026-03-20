@@ -63,7 +63,8 @@ const migrationStatements = [
   )`,
   `CREATE TABLE IF NOT EXISTS gps_points (
     id SERIAL PRIMARY KEY,
-    stop_id TEXT NOT NULL,
+    stop_id TEXT,
+    route_id TEXT,
     user_id TEXT NOT NULL,
     latitude DOUBLE PRECISION NOT NULL,
     longitude DOUBLE PRECISION NOT NULL,
@@ -72,17 +73,19 @@ const migrationStatements = [
   )`,
   `CREATE TABLE IF NOT EXISTS stop_delivery_info (
     stop_id TEXT PRIMARY KEY,
+    name TEXT,
     signature TEXT,
     images TEXT,
     description TEXT,
+    deviation TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
-  `CREATE TABLE IF NOT EXISTS stop_lifecycle_state (
-    stop_id TEXT PRIMARY KEY,
-    event_type TEXT NOT NULL,
-    payload TEXT,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  `CREATE TABLE IF NOT EXISTS stop_arrival_departure (
+    id SERIAL PRIMARY KEY,
+    stop_id TEXT NOT NULL UNIQUE,
+    arrival_time TIMESTAMPTZ,
+    departure_time TIMESTAMPTZ
   )`,
 ]
 
@@ -118,6 +121,33 @@ export async function runMigrations(): Promise<void> {
       await client.query(
         `ALTER TABLE stop_delivery_updates ALTER COLUMN created_at TYPE TIMESTAMPTZ USING to_timestamp(created_at / 1000.0) AT TIME ZONE 'UTC'`
       )
+    }
+    // Add name and deviation to stop_delivery_info if missing (e.g. existing DBs)
+    const infoCols = await client.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'stop_delivery_info'`
+    )
+    const hasName = infoCols.rows.some((r: { column_name: string }) => r.column_name === 'name')
+    const hasDeviation = infoCols.rows.some((r: { column_name: string }) => r.column_name === 'deviation')
+    if (!hasName) {
+      await client.query(`ALTER TABLE stop_delivery_info ADD COLUMN name TEXT`)
+    }
+    if (!hasDeviation) {
+      await client.query(`ALTER TABLE stop_delivery_info ADD COLUMN deviation TEXT`)
+    }
+    // Drop deprecated table (replaced by stop_arrival_departure)
+    await client.query('DROP TABLE IF EXISTS stop_lifecycle_state')
+    // Allow arrival/departure for any stop_id (app sends IDs from local DB, e.g. 414994_Start)
+    await client.query(
+      'ALTER TABLE stop_arrival_departure DROP CONSTRAINT IF EXISTS stop_arrival_departure_stop_id_fkey'
+    )
+    // Add route_id to gps_points for existing DBs; make stop_id nullable
+    const gpsCols = await client.query(
+      `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gps_points'`
+    )
+    const hasRouteId = gpsCols.rows.some((r: { column_name: string }) => r.column_name === 'route_id')
+    if (!hasRouteId) {
+      await client.query(`ALTER TABLE gps_points ADD COLUMN route_id TEXT`)
+      await client.query(`ALTER TABLE gps_points ALTER COLUMN stop_id DROP NOT NULL`)
     }
   } finally {
     client.release()
